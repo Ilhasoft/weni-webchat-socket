@@ -28,6 +28,8 @@ type Message struct {
 	QuickReplies []string `json:"quick_replies,omitempty" bson:"quick_replies,omitempty"`
 }
 
+type HistoryCleaner interface{}
+
 func NewMessagePayload(direction string, contactURN string, channelUUID string, message Message) *MessagePayload {
 	return &MessagePayload{
 		ContactURN: contactURN,

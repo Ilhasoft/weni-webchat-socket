@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -16,6 +17,7 @@ const collection = "message"
 type Repo interface {
 	Get(contactURN, channelUUID string, before *time.Time, limit, page int) ([]MessagePayload, error)
 	Save(msg MessagePayload) error
+	DeleteOlderThan(ctx context.Context, createdAt time.Time, limit int64) (int64, error)
 }
 
 type repo struct {
@@ -93,4 +95,44 @@ func (p *pagination) GetOptions() *options.FindOptions {
 	l := p.limit
 	skip := p.page*p.limit - p.limit
 	return &options.FindOptions{Limit: &l, Skip: &skip, Sort: bson.D{{Key: "timestamp", Value: -1}}}
+}
+
+func (r repo) DeleteOlderThan(ctx context.Context, createdAt time.Time, limit int64) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), r.timeout*time.Second)
+	defer cancel()
+	var timestamp int64
+
+	timestamp = time.Now().Unix()
+
+	qry := bson.M{
+		"timestamp": bson.M{"$lt": timestamp},
+	}
+	options := &options.FindOptions{Limit: &limit}
+	cursor, err := r.collection.Find(ctx, qry, options)
+	if err != nil {
+		return 0, fmt.Errorf("find failed: %s", err.Error())
+	}
+	defer cursor.Close(ctx)
+	msgs := []MessagePayload{}
+	for cursor.Next(ctx) {
+		var msg MessagePayload
+		if err = cursor.Decode(&msg); err != nil {
+			return 0, fmt.Errorf("failed to parse message from cursor: %s", err.Error())
+		}
+		msgs = append(msgs, msg)
+	}
+
+	if len(msgs) > 0 {
+		msgIds := []primitive.ObjectID{}
+		for _, m := range msgs {
+			msgIds = append(msgIds, *m.ID)
+		}
+		filter := bson.M{"_id": bson.M{"$in": msgIds}}
+		result, err := r.collection.DeleteMany(ctx, filter)
+		if err != nil {
+			return 0, err
+		}
+		return result.DeletedCount, nil
+	}
+	return 0, nil
 }

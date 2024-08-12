@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/golang/mock/gomock"
 	"github.com/gorilla/websocket"
 	"github.com/ilhasoft/wwcs/pkg/history"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.uber.org/mock/gomock"
 )
 
 var ttParsePayload = []struct {
