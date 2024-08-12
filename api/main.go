@@ -84,6 +84,7 @@ func main() {
 
 	mdb := db.NewDB()
 	histories := history.NewService(history.NewRepo(mdb, config.Get().DB.ContextTimeout))
+	histories.StartHistoryCleaner()
 
 	clientM := websocket.NewClientManager(rdb, int(queueConfig.ClientTTL))
 

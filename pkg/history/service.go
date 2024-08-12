@@ -16,8 +16,7 @@ type Service interface {
 }
 
 type service struct {
-	repo    Repo
-	cleaner HistoryCleaner
+	repo Repo
 }
 
 // NewService creates and return a new message service.
